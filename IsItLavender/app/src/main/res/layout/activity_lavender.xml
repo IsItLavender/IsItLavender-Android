@@ -1,0 +1,65 @@
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools" android:layout_width="match_parent"
+    android:layout_height="match_parent" android:paddingLeft="@dimen/activity_horizontal_margin"
+    android:paddingRight="@dimen/activity_horizontal_margin"
+    android:paddingTop="@dimen/activity_vertical_margin"
+    android:paddingBottom="@dimen/activity_vertical_margin" tools:context=".LavenderActivity">
+
+    <LinearLayout
+        android:layout_width="fill_parent"
+        android:layout_height="fill_parent"
+        android:orientation="vertical"
+        android:layout_weight="1">
+
+     <LinearLayout
+         android:layout_width="fill_parent"
+         android:layout_height="fill_parent"
+         android:orientation="horizontal"
+         android:layout_weight="1">
+
+         <SurfaceView
+             android:id="@+id/camera_preview"
+             android:layout_width="fill_parent"
+             android:layout_height="fill_parent"
+             android:layout_weight="1"
+             />
+
+         <LinearLayout
+             android:layout_width="fill_parent"
+             android:layout_height="fill_parent"
+             android:orientation="vertical"
+             android:layout_weight="5">
+
+             <TextView android:text="@string/is_it_lavender"
+                 android:layout_width="fill_parent"
+                 android:layout_height="fill_parent"
+                 android:layout_weight="2"/>
+
+             <TextView android:text=""
+                 android:layout_width="fill_parent"
+                 android:layout_height="fill_parent"
+                 android:layout_weight="2"
+                 android:id="@+id/statusMessage"/>
+
+             <Button
+                 android:layout_width="fill_parent"
+                 android:layout_height="fill_parent"
+                 android:text="Analyze"
+                 android:id="@+id/analyze"
+                 android:layout_weight="2"
+                 android:onClick="analyzeImage"/>
+
+         </LinearLayout>
+
+        </LinearLayout>
+
+    <ProgressBar
+        style="?android:attr/progressBarStyleHorizontal"
+        android:layout_width="fill_parent"
+        android:layout_height="fill_parent"
+        android:id="@+id/progressBar"
+        android:layout_weight="15" />
+
+    </LinearLayout>
+
+</RelativeLayout>
