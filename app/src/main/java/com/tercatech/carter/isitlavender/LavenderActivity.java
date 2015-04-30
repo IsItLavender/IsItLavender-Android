@@ -39,13 +39,24 @@ public class LavenderActivity extends Activity implements SurfaceHolder.Callback
     };
 
     int retryCount;
-    static String[] endMessages = new String[] {
+    final static int RETRY_LEVEL_CHANGE = 5;
+    static String[] endMessagesLevel1 = new String[] {
             "Maybe Lavender",
-            "< 20% Probability Not Lavender",
+            "< 90% Probability Not Lavender",
+            "Maybe Lavender",
+            "< 90% Probability Not Lavender",
+            "Maybe Lavender",
             "Low Image Quality",
+            "Unable To Identify"
+    };
+    static String[] endMessagesLevel2 = new String[] {
             "Please Retake Image",
             "Wormy",
-            "Please Retake Image"
+            "Please Retake Image",
+            "Image Analysis Not Possible",
+            "Please Retake Image",
+            "Image Analysis Not Possible",
+            "Image Corrupted"
     };
 
     @Override
@@ -104,7 +115,7 @@ public class LavenderActivity extends Activity implements SurfaceHolder.Callback
                     });
 
                     try{
-                        Thread.sleep(600 + 100*retryCount + ((long) (Math.random() % 400) - 200), 0);
+                        Thread.sleep(300 + 100*retryCount + (long) (Math.random()*200), 0);
                     } catch(Exception e){
                         Log.e("Lavender", "Someone set an alarm");
                     }
@@ -128,9 +139,18 @@ public class LavenderActivity extends Activity implements SurfaceHolder.Callback
     }
 
     public void endAnalysis(){
+
+        String endMessage = "";
+        if(retryCount < RETRY_LEVEL_CHANGE){
+            endMessage = endMessagesLevel1[(int)(Math.random()*endMessagesLevel1.length)];
+        }
+        else{
+            endMessage = endMessagesLevel2[(int)(Math.random()*endMessagesLevel2.length)];
+        }
+
         new AlertDialog.Builder(this)
                 .setTitle("Results")
-                .setMessage(endMessages[Math.min(retryCount, endMessages.length-1)])
+                .setMessage(endMessage)
                 .setNegativeButton("Reanalyze", new DialogInterface.OnClickListener() {
                     public void onClick(DialogInterface d, int w) {
                         retryCount++;
@@ -226,7 +246,7 @@ public class LavenderActivity extends Activity implements SurfaceHolder.Callback
             case 0:
                 new AlertDialog.Builder(this)
                         .setTitle("Credits")
-                        .setMessage("Idea by Lee Holtzman and friends\nCode by Carter\nLavender image by yamachem")
+                        .setMessage("Idea by Lee Holtzman and friends\nCode by Carter")
                         .setNeutralButton("OK", new DialogInterface.OnClickListener() {
                             public void onClick(DialogInterface d, int w) {}
                         })
