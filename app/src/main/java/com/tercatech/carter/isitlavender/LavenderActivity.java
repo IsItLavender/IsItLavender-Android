@@ -2,10 +2,14 @@ package com.tercatech.carter.isitlavender;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.pm.ActivityInfo;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.hardware.Camera;
 import android.os.Bundle;
+import android.os.Environment;
 import android.os.Handler;
 import android.util.Log;
 import android.view.Menu;
@@ -16,16 +20,22 @@ import android.view.View;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
+import java.io.BufferedOutputStream;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
 
 
 public class LavenderActivity extends Activity implements SurfaceHolder.Callback {
 
-    Camera mCamera;
-    boolean previewing;
-    SurfaceHolder cameraViewHolder;
-    ProgressBar progress;
-    TextView status;
+    private Camera mCamera;
+    private boolean previewing;
+    private SurfaceHolder cameraViewHolder;
+    private ProgressBar progress;
+    private TextView status;
+    private byte[] currentImage;
+    private Context context;
 
     static String[] statuses = new String[]{
             "Retrieving image",
@@ -83,6 +93,8 @@ public class LavenderActivity extends Activity implements SurfaceHolder.Callback
 
         retryCount = 0;
 
+        context = this;
+
         Log.e("Lavender", "Created");
     }
 
@@ -138,6 +150,25 @@ public class LavenderActivity extends Activity implements SurfaceHolder.Callback
         }.start();
     }
 
+    public void shareImage(){
+        new AlertDialog.Builder(this)
+                .setTitle("Share Image")
+                .setMessage("Share your image")
+                .setNegativeButton("Cancel", null)
+                .setNeutralButton("Save", new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface d, int w) {
+                        StoreByteImage(context, currentImage, 50, "lavender_image");
+                    }
+                })
+                .setPositiveButton("Upload", new DialogInterface.OnClickListener(){
+                    public void onClick(DialogInterface d, int w){
+                    }
+                })
+                .setIcon(android.R.drawable.btn_star)
+                .show();
+    }
+
+
     public void endAnalysis(){
 
         String endMessage = "";
@@ -157,8 +188,13 @@ public class LavenderActivity extends Activity implements SurfaceHolder.Callback
                         analysisLoop();
                     }
                 })
-                .setPositiveButton("Take Another Photo", new DialogInterface.OnClickListener(){
-                    public void onClick(DialogInterface d, int w){
+                .setNeutralButton("Share", new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface d, int w) {
+                        shareImage();
+                    }
+                })
+                .setPositiveButton("Take Another Photo", new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface d, int w) {
                         retryCount = 0;
                         endAnalyzeImage();
                     }
@@ -168,7 +204,7 @@ public class LavenderActivity extends Activity implements SurfaceHolder.Callback
     }
 
     public void analyzeImage(View v){
-        mCamera.stopPreview();
+        mCamera.takePicture(null, mPictureCallback, mPictureCallback);
         previewing = false;
         analysisLoop();
     }
@@ -177,6 +213,60 @@ public class LavenderActivity extends Activity implements SurfaceHolder.Callback
 
         mCamera.startPreview();
         previewing = true;
+    }
+
+    Camera.PictureCallback mPictureCallback = new Camera.PictureCallback() {
+        public void onPictureTaken(byte[] imageData, Camera c) {
+            if (imageData != null) {
+                currentImage = imageData;
+                mCamera.startPreview();
+            }
+        }
+    };
+
+    public void StoreByteImage(Context context, byte[] imageData, int quality, String expName){
+        File imageDirectory = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM).toString() + "/lavender");
+        Log.e("StoreByteImage", imageDirectory.toString());
+        try {
+            imageDirectory.mkdir();
+            FileOutputStream outStream = new FileOutputStream(imageDirectory.toString() +"/lavender" + String.valueOf(System.currentTimeMillis() + ".jpg"));
+
+            BitmapFactory.Options imgOptions = new BitmapFactory.Options();
+            imgOptions.inSampleSize = 5;
+
+            Bitmap image = BitmapFactory.decodeByteArray(imageData, 0, imageData.length, imgOptions);
+
+            BufferedOutputStream bufferedOutStream = new BufferedOutputStream(outStream);
+
+            image.compress(Bitmap.CompressFormat.JPEG, quality, bufferedOutStream);
+
+            bufferedOutStream.flush();
+            bufferedOutStream.close();
+        }
+        catch(FileNotFoundException e){
+            alertError("Could not write to directory");
+            e.printStackTrace();
+        }
+        catch(IOException e){
+            alertError("Could not write");
+            e.printStackTrace();
+        }
+
+        new AlertDialog.Builder(this)
+                .setTitle("Success")
+                .setMessage("Image saved to " + imageDirectory.toString())
+                .setPositiveButton("OK", null)
+                .setIcon(android.R.drawable.btn_star)
+                .show();
+    }
+
+    private void alertError(String errorMessage){
+        new AlertDialog.Builder(this)
+                .setTitle("Error")
+                .setMessage(errorMessage)
+                .setPositiveButton("OK", null)
+                .setIcon(android.R.drawable.btn_star)
+                .show();
     }
 
     private void setCameraParameters(){
