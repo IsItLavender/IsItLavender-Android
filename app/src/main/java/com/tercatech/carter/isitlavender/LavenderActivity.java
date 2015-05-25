@@ -7,6 +7,8 @@ import android.content.DialogInterface;
 import android.content.pm.ActivityInfo;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
+import android.graphics.Paint;
 import android.hardware.Camera;
 import android.os.Bundle;
 import android.os.Environment;
@@ -159,19 +161,19 @@ public class LavenderActivity extends Activity implements SurfaceHolder.Callback
         }.start();
     }
 
-    public void shareImage(){
+    public void shareImage(final String message){
         new AlertDialog.Builder(this)
                 .setTitle("Share Image")
                 .setMessage("Share your image")
                 .setNegativeButton("Cancel", null)
                 .setNeutralButton("Save", new DialogInterface.OnClickListener() {
                     public void onClick(DialogInterface d, int w) {
-                        StoreByteImage(context, currentImage, 50);
+                        StoreByteImage(context, currentImage, 50, message);
                     }
                 })
                 .setPositiveButton("Upload", new DialogInterface.OnClickListener(){
                     public void onClick(DialogInterface d, int w){
-                        uploadImage(StoreByteImage(context, currentImage, 50));
+                        uploadImage(StoreByteImage(context, currentImage, 50, message));
                     }
                 })
                 .setIcon(android.R.drawable.btn_star)
@@ -181,7 +183,7 @@ public class LavenderActivity extends Activity implements SurfaceHolder.Callback
 
     public void endAnalysis(){
 
-        String endMessage = "";
+        final String endMessage;
         if(retryCount < RETRY_LEVEL_CHANGE){
             endMessage = endMessagesLevel1[(int)(Math.random()*endMessagesLevel1.length)];
         }
@@ -200,7 +202,7 @@ public class LavenderActivity extends Activity implements SurfaceHolder.Callback
                 })
                 .setNeutralButton("Share", new DialogInterface.OnClickListener() {
                     public void onClick(DialogInterface d, int w) {
-                        shareImage();
+                        shareImage(endMessage);
                     }
                 })
                 .setPositiveButton("Take Another Photo", new DialogInterface.OnClickListener() {
@@ -211,6 +213,9 @@ public class LavenderActivity extends Activity implements SurfaceHolder.Callback
                 })
                 .setIcon(android.R.drawable.btn_star)
                 .show();
+
+        mCamera.startPreview();
+        previewing = true;
     }
 
     public void analyzeImage(View v){
@@ -225,20 +230,33 @@ public class LavenderActivity extends Activity implements SurfaceHolder.Callback
         previewing = true;
     }
 
+    public Bitmap overlayAnalysis(Bitmap image, String message){
+        Bitmap overlayed  = Bitmap.createBitmap(image.getWidth(), image.getHeight(), image.getConfig());
+        Canvas canvas = new Canvas(overlayed);
+
+        Paint textPaint = new Paint();
+        textPaint.setARGB(255, 0, 128, 255);
+        textPaint.setTextSize(50);
+        canvas.drawBitmap(image, 0, 0, null);
+        canvas.drawText(message, image.getWidth()/2-25, image.getHeight()-25, textPaint);
+        Log.v("overlaying", message);
+
+        return overlayed;
+    }
+
     Camera.PictureCallback mPictureCallback = new Camera.PictureCallback() {
         public void onPictureTaken(byte[] imageData, Camera c) {
             if (imageData != null) {
                 currentImage = imageData;
-                mCamera.startPreview();
             }
         }
     };
 
-    public String StoreByteImage(Context context, byte[] imageData, int quality){
+    public String StoreByteImage(Context context, byte[] imageData, int quality, String message){
         File imageDirectory = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM).toString() + "/lavender");
         String writePath = imageDirectory.toString() +"/lavender" + String.valueOf(System.currentTimeMillis()) + ".jpg";
 
-        Log.e("StoreByteImage", imageDirectory.toString());
+        Log.v("StoreByteImage", imageDirectory.toString());
         try {
             imageDirectory.mkdir();
             FileOutputStream outStream = new FileOutputStream(writePath);
@@ -248,9 +266,11 @@ public class LavenderActivity extends Activity implements SurfaceHolder.Callback
 
             Bitmap image = BitmapFactory.decodeByteArray(imageData, 0, imageData.length, imgOptions);
 
+            Bitmap overImage = overlayAnalysis(image, message);
+
             BufferedOutputStream bufferedOutStream = new BufferedOutputStream(outStream);
 
-            image.compress(Bitmap.CompressFormat.JPEG, quality, bufferedOutStream);
+            overImage.compress(Bitmap.CompressFormat.JPEG, quality, bufferedOutStream);
 
             bufferedOutStream.flush();
             bufferedOutStream.close();
