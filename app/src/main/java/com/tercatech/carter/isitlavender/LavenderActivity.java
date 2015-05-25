@@ -20,11 +20,20 @@ import android.view.View;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
+import org.apache.http.HttpConnection;
+
 import java.io.BufferedOutputStream;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
+import java.net.URL;
 
 
 public class LavenderActivity extends Activity implements SurfaceHolder.Callback {
@@ -157,11 +166,12 @@ public class LavenderActivity extends Activity implements SurfaceHolder.Callback
                 .setNegativeButton("Cancel", null)
                 .setNeutralButton("Save", new DialogInterface.OnClickListener() {
                     public void onClick(DialogInterface d, int w) {
-                        StoreByteImage(context, currentImage, 50, "lavender_image");
+                        StoreByteImage(context, currentImage, 50);
                     }
                 })
                 .setPositiveButton("Upload", new DialogInterface.OnClickListener(){
                     public void onClick(DialogInterface d, int w){
+                        uploadImage(StoreByteImage(context, currentImage, 50));
                     }
                 })
                 .setIcon(android.R.drawable.btn_star)
@@ -224,12 +234,14 @@ public class LavenderActivity extends Activity implements SurfaceHolder.Callback
         }
     };
 
-    public void StoreByteImage(Context context, byte[] imageData, int quality, String expName){
+    public String StoreByteImage(Context context, byte[] imageData, int quality){
         File imageDirectory = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DCIM).toString() + "/lavender");
+        String writePath = imageDirectory.toString() +"/lavender" + String.valueOf(System.currentTimeMillis()) + ".jpg";
+
         Log.e("StoreByteImage", imageDirectory.toString());
         try {
             imageDirectory.mkdir();
-            FileOutputStream outStream = new FileOutputStream(imageDirectory.toString() +"/lavender" + String.valueOf(System.currentTimeMillis() + ".jpg"));
+            FileOutputStream outStream = new FileOutputStream(writePath);
 
             BitmapFactory.Options imgOptions = new BitmapFactory.Options();
             imgOptions.inSampleSize = 5;
@@ -258,6 +270,87 @@ public class LavenderActivity extends Activity implements SurfaceHolder.Callback
                 .setPositiveButton("OK", null)
                 .setIcon(android.R.drawable.btn_star)
                 .show();
+
+        return writePath;
+    }
+
+    public void uploadImage(final String imagePath){
+        new Thread() {
+            public void run() {
+                try{
+                    File imageFile = new File(imagePath);
+
+                    String filename = imageFile.getName();
+                    Log.v("Upload", "Uploading " + imageFile.toString());
+
+                    URL uploadURL = new URL("http://73.162.155.107/lavender/upload.php");
+
+                    HttpURLConnection conn = (HttpURLConnection) uploadURL.openConnection();
+                    conn.setDoInput(true);
+                    conn.setDoOutput(true);
+                    conn.setUseCaches(false);
+                    conn.setRequestMethod("POST");
+                    conn.setRequestProperty("Connection", "Keep-Alive");
+                    conn.setRequestProperty("ENCTYPE", "multipart/form-data");
+                    conn.setRequestProperty("Content-Type", "multipart/form-data;boundary=*****");
+                    conn.setRequestProperty("uploaded_file", filename);
+
+                    DataOutputStream outStream = new DataOutputStream(conn.getOutputStream());
+                    outStream.writeBytes("--*****\r\n");
+                    outStream.writeBytes("Content-Disposition: form-data; name=\"uploaded_file\";filename=\"" + filename + "\"\r\n");
+                    outStream.writeBytes("\r\n");
+
+                    FileInputStream inStream = new FileInputStream(imagePath);
+
+                    int availableBytes = inStream.available();
+                    int bufSize = Math.min(availableBytes, 1024 * 1024);
+                    byte[] buffer = new byte[bufSize];
+
+                    int bytesRead = inStream.read(buffer, 0, bufSize);
+
+                    while(bytesRead > 0){
+                        outStream.write(buffer, 0, bufSize);
+
+                        availableBytes = inStream.available();
+                        bufSize = Math.min(availableBytes, 1024 * 1024);
+                        bytesRead = inStream.read(buffer, 0, bufSize);
+
+                        final int tmpBytesRead = bytesRead;
+                        statusHandler.post(new Runnable() {
+                            @Override
+                            public void run() {
+                                status.setText("Uploading " + tmpBytesRead);
+                            }
+                        });
+                    }
+
+                    outStream.writeBytes("\r\n");
+                    outStream.writeBytes("--*****--\r\n");
+
+                    int respCode = conn.getResponseCode();
+                    String respMess = conn.getResponseMessage();
+                    Log.v("Upload response", respMess + " " + respCode);
+                    statusHandler.post(new Runnable() {
+                        @Override
+                        public void run() {
+                            status.setText("Upload complete");
+                        }
+                    });
+
+                    inStream.close();
+                    outStream.flush();
+                    outStream.close();
+
+                }
+                catch(MalformedURLException e){
+                    e.printStackTrace();
+                }
+                catch (IOException e){
+                    e.printStackTrace();
+                }
+            }
+        }.start();
+        status.setText("Uploading");
     }
 
     private void alertError(String errorMessage){
