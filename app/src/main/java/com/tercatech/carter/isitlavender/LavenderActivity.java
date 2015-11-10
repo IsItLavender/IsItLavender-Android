@@ -303,7 +303,7 @@ public class LavenderActivity extends Activity implements SurfaceHolder.Callback
                     String filename = imageFile.getName();
                     Log.v("Upload", "Uploading " + imageFile.toString());
 
-                    URL uploadURL = new URL("http://73.162.155.107/lavender/upload.php");
+                    URL uploadURL = new URL("http://50.131.111.99/lavender/upload.php");
 
                     HttpURLConnection conn = (HttpURLConnection) uploadURL.openConnection();
                     conn.setDoInput(true);
